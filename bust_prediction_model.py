@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import MinMaxScaler
@@ -66,20 +66,14 @@ def load_and_preprocess_data(file_path, sequence_length=40):
     return X, y
 
 def build_model(input_shape):
-    """Build a regression model for multiplier prediction"""
+    """Build a basic regression model for multiplier prediction"""
     model = Sequential([
-        LSTM(128, input_shape=input_shape, return_sequences=True),
-        Dropout(0.3),
-        LSTM(64, return_sequences=True),
-        Dropout(0.3),
-        LSTM(32),
-        Dropout(0.3),
-        Dense(16, activation='relu'),
-        Dense(1, activation='sigmoid')  # Sigmoid activation to constrain predictions
+        LSTM(32, input_shape=input_shape),
+        Dense(1)  # Linear activation for regression
     ])
     
-    # Compile model with gradient clipping and lower learning rate
-    optimizer = Adam(learning_rate=0.0001, clipnorm=1.0)
+    # Compile model
+    optimizer = Adam(learning_rate=0.001)
     model.compile(
         optimizer=optimizer,
         loss='mse',
@@ -110,7 +104,7 @@ def main():
     X_train_scaled = X_scaler.fit_transform(X_train_reshaped).reshape(X_train.shape)
     X_test_scaled = X_scaler.transform(X_test_reshaped).reshape(X_test.shape)
     
-    # Scale targets to [0,1] range
+    # Scale targets
     y_train_scaled = y_scaler.fit_transform(y_train.reshape(-1, 1)).ravel()
     y_test_scaled = y_scaler.transform(y_test.reshape(-1, 1)).ravel()
     
@@ -122,21 +116,21 @@ def main():
     if not os.path.exists('models'):
         os.makedirs('models')
     
-    # Define early stopping with more patience
+    # Define early stopping
     early_stopping = EarlyStopping(
         monitor='val_mae',
-        patience=10,
+        patience=5,
         restore_best_weights=True,
         verbose=1
     )
     
-    # Train model with more epochs
+    # Train model
     print("Training model...")
     history = model.fit(
         X_train_scaled, y_train_scaled,
         validation_data=(X_test_scaled, y_test_scaled),
-        epochs=100,
-        batch_size=32,  # Smaller batch size
+        epochs=50,
+        batch_size=64,
         callbacks=[early_stopping],
         verbose=1
     )
